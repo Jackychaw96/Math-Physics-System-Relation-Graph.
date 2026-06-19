@@ -1,0 +1,1690 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>数学与物理体系交互可视化</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-soft: #eef4f4;
+      --text: #17202a;
+      --muted: #64748b;
+      --line: #d5dde6;
+      --ink: #253244;
+      --math: #2563eb;
+      --bridge: #7c3aed;
+      --physics: #d97706;
+      --core: #0f766e;
+      --method: #be123c;
+      --app: #15803d;
+      --shadow: 0 16px 40px rgba(34, 44, 58, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 260px;
+    }
+
+    .mark {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #cfd8e3;
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--ink);
+      font-weight: 800;
+      font-size: 17px;
+      box-shadow: 0 6px 18px rgba(37, 50, 68, 0.08);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+      font-weight: 760;
+    }
+
+    .mode-line {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .tabs {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fafb;
+    }
+
+    .tab {
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #475569;
+      padding: 9px 14px;
+      cursor: pointer;
+      min-width: 96px;
+      transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+    }
+
+    .tab[aria-selected="true"] {
+      background: #ffffff;
+      color: var(--text);
+      box-shadow: 0 4px 12px rgba(37, 50, 68, 0.12);
+      font-weight: 700;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 18px;
+      padding: 18px 24px 24px;
+      min-height: 0;
+    }
+
+    .map-panel,
+    .detail-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .map-panel {
+      display: grid;
+      grid-template-rows: auto minmax(560px, 1fr);
+      overflow: hidden;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: min(320px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #f8fafc;
+      color: var(--muted);
+    }
+
+    .search input {
+      border: 0;
+      outline: 0;
+      width: 100%;
+      min-width: 120px;
+      background: transparent;
+      color: var(--text);
+    }
+
+    .filters {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      color: #475569;
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+    }
+
+    .chip.active {
+      border-color: #94a3b8;
+      background: #edf6f5;
+      color: #0f766e;
+      font-weight: 700;
+    }
+
+    .switch,
+    .range-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #475569;
+      font-size: 14px;
+      min-height: 40px;
+    }
+
+    .switch input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--core);
+    }
+
+    .range-control input {
+      width: 110px;
+      accent-color: var(--core);
+    }
+
+    .icon-buttons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .icon-button {
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--ink);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+    }
+
+    .icon-button:hover {
+      border-color: #94a3b8;
+      background: #f8fafc;
+    }
+
+    .graph-wrap {
+      min-height: 560px;
+      background: #fbfcfd;
+      position: relative;
+      overflow: hidden;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .zone rect {
+      fill: #f5f8fb;
+      stroke: #dbe3ec;
+      stroke-width: 1;
+    }
+
+    .zone {
+      pointer-events: none;
+    }
+
+    .zone text {
+      fill: #64748b;
+      font-size: 16px;
+      font-weight: 760;
+    }
+
+    .edge {
+      fill: none;
+      stroke: #aeb9c7;
+      stroke-width: 1.6;
+      opacity: 0.34;
+      cursor: pointer;
+      transition: opacity 120ms ease, stroke-width 120ms ease;
+    }
+
+    .edge.feedback {
+      stroke-dasharray: 7 7;
+    }
+
+    .edge.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .edge.dimmed {
+      opacity: 0.08;
+    }
+
+    .edge.active {
+      opacity: 0.92;
+      stroke-width: 3.2;
+    }
+
+    .edge-label rect {
+      fill: #ffffff;
+      stroke: #d5dde6;
+      rx: 6;
+      ry: 6;
+    }
+
+    .edge-label text {
+      fill: #253244;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .edge-label {
+      pointer-events: none;
+    }
+
+    .node {
+      cursor: grab;
+    }
+
+    .node:active {
+      cursor: grabbing;
+    }
+
+    .node rect.card {
+      fill: #ffffff;
+      stroke: #cbd5e1;
+      stroke-width: 1.4;
+      filter: drop-shadow(0 8px 18px rgba(37, 50, 68, 0.08));
+      transition: opacity 120ms ease, stroke-width 120ms ease;
+    }
+
+    .node rect.stripe {
+      stroke: none;
+    }
+
+    .node text {
+      fill: #17202a;
+      font-size: 14px;
+      font-weight: 720;
+      pointer-events: none;
+    }
+
+    .node .mini {
+      fill: #64748b;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .node.dimmed {
+      opacity: 0.22;
+    }
+
+    .node.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .node.active rect.card,
+    .node.hovered rect.card {
+      stroke-width: 2.4;
+    }
+
+    .node.match rect.card {
+      stroke-width: 2.2;
+      stroke: #0f766e;
+    }
+
+    .detail-panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .detail-head {
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .detail-kicker {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .detail-title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.25;
+    }
+
+    .detail-body {
+      overflow: auto;
+      padding: 16px 18px 20px;
+    }
+
+    .detail-body p {
+      margin: 0 0 14px;
+      color: #334155;
+      line-height: 1.72;
+      font-size: 15px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #f8fafc;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 22px;
+      line-height: 1.1;
+      color: var(--ink);
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .relation-list {
+      display: grid;
+      gap: 10px;
+      margin: 12px 0 0;
+    }
+
+    .relation {
+      border: 1px solid var(--line);
+      border-left-width: 5px;
+      border-radius: 8px;
+      padding: 11px 12px;
+      background: #ffffff;
+    }
+
+    .relation strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .relation span {
+      color: #475569;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #475569;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 8px;
+      background: #ffffff;
+    }
+
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    @media (max-width: 980px) {
+      .topbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .tabs {
+        width: 100%;
+      }
+
+      .tab {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+        padding: 14px;
+      }
+
+      .map-panel {
+        grid-template-rows: auto 66vh;
+      }
+
+      .detail-panel {
+        min-height: 340px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">ΣΦ</div>
+        <div>
+          <h1>数学与物理体系关系图</h1>
+          <p class="mode-line" id="modeLine"></p>
+        </div>
+      </div>
+      <div class="tabs" role="tablist" aria-label="视图切换">
+        <button class="tab" type="button" data-mode="combined" aria-selected="true">综合关联</button>
+        <button class="tab" type="button" data-mode="physics" aria-selected="false">物理体系</button>
+        <button class="tab" type="button" data-mode="math" aria-selected="false">数学体系</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="map-panel" aria-label="关系图">
+        <div class="toolbar">
+          <label class="search">
+            <span>搜索</span>
+            <input id="searchInput" type="search" placeholder="输入分支或主题" autocomplete="off">
+          </label>
+          <div class="filters" id="layerFilters" aria-label="层级筛选"></div>
+          <label class="switch">
+            <input id="focusToggle" type="checkbox" checked>
+            <span>聚焦选择</span>
+          </label>
+          <label class="range-control">
+            <span>连线密度</span>
+            <input id="densityInput" type="range" min="1" max="3" value="1">
+          </label>
+          <div class="icon-buttons">
+            <button class="icon-button" id="zoomOutButton" type="button" title="缩小" aria-label="缩小">−</button>
+            <button class="icon-button" id="zoomInButton" type="button" title="放大" aria-label="放大">+</button>
+            <button class="icon-button" id="resetButton" type="button" title="重置视图" aria-label="重置视图">↺</button>
+          </div>
+        </div>
+        <div class="graph-wrap">
+          <svg id="graph" viewBox="0 0 1400 860" role="img" aria-label="数学与物理体系网状图"></svg>
+        </div>
+      </section>
+
+      <aside class="detail-panel" aria-label="说明">
+        <div class="detail-head">
+          <div class="detail-kicker" id="detailKicker"></div>
+          <h2 class="detail-title" id="detailTitle"></h2>
+        </div>
+        <div class="detail-body" id="detailBody"></div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const VIEWBOX = { width: 1400, height: 860 };
+    const NODE = { width: 174, height: 58 };
+
+    const MODE_META = {
+      combined: {
+        title: "综合关联",
+        line: "从数学工具到桥梁主题、物理分支，再到仍未解决的核心问题。",
+        overview: "数学为物理提供语言、结构、方程和计算方法；物理又把真实世界中的问题反馈给数学，推动新的概念和工具出现。最右侧的未解问题展示了两套体系正在共同推进的前沿；这里的“未解”指截至2026年6月尚无公认完整解决方案。",
+        columns: [
+          { key: "数学工具", x: 130, color: "#2563eb" },
+          { key: "桥梁主题", x: 470, color: "#7c3aed" },
+          { key: "物理分支", x: 820, color: "#d97706" },
+          { key: "未解问题", x: 1185, color: "#dc2626" }
+        ]
+      },
+      physics: {
+        title: "物理体系",
+        line: "从基础理论、研究对象、方法应用，到各分支仍未解决的核心问题。",
+        overview: "物理体系从少数基础理论出发，解释不同尺度和不同对象的自然现象，并通过实验、计算和工程应用不断扩展。未解问题标出每个方向仍在追问的关键缺口；这里的“未解”指截至2026年6月尚无公认完整解决方案。",
+        columns: [
+          { key: "基础理论", x: 150, color: "#0f766e" },
+          { key: "研究对象", x: 480, color: "#d97706" },
+          { key: "方法与应用", x: 805, color: "#be123c" },
+          { key: "未解问题", x: 1175, color: "#dc2626" }
+        ]
+      },
+      math: {
+        title: "数学体系",
+        line: "把数学分成基础语言、核心结构、方法工具、应用连接，并关联主要未解问题。",
+        overview: "数学体系以逻辑和集合为底层语言，发展出代数、几何、分析、概率等核心结构，再通过计算、优化和建模进入各类应用领域。未解问题列出仍深刻影响多个分支的公开难题；这里的“未解”指截至2026年6月尚无公认完整解决方案。",
+        columns: [
+          { key: "基础语言", x: 120, color: "#2563eb" },
+          { key: "核心结构", x: 390, color: "#0f766e" },
+          { key: "方法工具", x: 660, color: "#be123c" },
+          { key: "应用连接", x: 930, color: "#15803d" },
+          { key: "未解问题", x: 1205, color: "#dc2626" }
+        ]
+      }
+    };
+
+    const DATA = {
+      combined: {
+        nodes: [
+          node("m_logic", "逻辑与集合论", "数学工具", "基础", "为理论建立可证明、可公理化的语言。"),
+          node("m_linear", "线性代数", "数学工具", "结构", "用向量空间、矩阵、本征值和算符组织状态与变换。"),
+          node("m_algebra", "代数、群论与表示论", "数学工具", "结构", "把对称性、守恒量和基本分类变成可计算的结构。"),
+          node("m_analysis", "分析学与泛函分析", "数学工具", "结构", "研究极限、连续、函数空间和算符，是连续理论的核心。"),
+          node("m_pde", "微分方程", "数学工具", "方程", "把随时间和空间变化的规律写成可研究的方程。"),
+          node("m_geometry", "几何与微分几何", "数学工具", "空间", "研究空间、曲率、流形和几何结构。"),
+          node("m_topology", "拓扑学", "数学工具", "空间", "研究连续变形下保持不变的整体性质。"),
+          node("m_probability", "概率统计", "数学工具", "随机", "描述随机性、数据推断和大量对象的统计规律。"),
+          node("m_discrete", "离散数学、图论与组合", "数学工具", "离散", "研究网络、格点、组合结构和可计算对象。"),
+          node("m_numeric", "数值计算与优化", "数学工具", "计算", "把复杂方程和模型转化为可运行的近似算法。"),
+          node("m_info", "信息论与数据数学", "数学工具", "信息", "研究编码、复杂性、学习、信号和信息处理。"),
+
+          node("b_symmetry", "对称性", "桥梁主题", "桥梁", "连接数学结构和物理守恒律的核心思想。"),
+          node("b_equation", "方程", "桥梁主题", "桥梁", "物理定律通常以数学方程表达。"),
+          node("b_space", "空间", "桥梁主题", "桥梁", "空间可以是舞台，也可以成为物理理论的一部分。"),
+          node("b_random", "随机性", "桥梁主题", "桥梁", "从微观不确定性和大量样本中提取宏观规律。"),
+          node("b_computation", "计算", "桥梁主题", "桥梁", "连接理论、实验和模拟的第三种研究路径。"),
+          node("b_information", "信息", "桥梁主题", "桥梁", "现代物理越来越把信息视为基本概念。"),
+
+          node("p_mechanics", "经典力学", "物理分支", "理论", "研究物体运动、力、能量、动量和变分原理。"),
+          node("p_em", "电磁学与光学", "物理分支", "理论", "研究电场、磁场、电磁波、光和相关技术。"),
+          node("p_thermo", "热学与统计物理", "物理分支", "理论", "从大量粒子的统计行为解释温度、熵、相变和宏观规律。"),
+          node("p_quantum", "量子力学", "物理分支", "理论", "描述微观系统的状态、测量、叠加、纠缠和能级。"),
+          node("p_relativity", "相对论", "物理分支", "理论", "描述高速运动、时空结构和引力。"),
+          node("p_particle", "粒子物理", "物理分支", "对象", "研究基本粒子、相互作用和高能场论。"),
+          node("p_nuclear", "核物理", "物理分支", "对象", "研究原子核结构、衰变、裂变、聚变和核反应。"),
+          node("p_condensed", "凝聚态物理", "物理分支", "对象", "研究固体、液体、材料、量子多体和集体现象。"),
+          node("p_fluid", "流体与等离子体", "物理分支", "对象", "研究连续介质、湍流、波、带电粒子气体和磁流体。"),
+          node("p_astro", "天体物理与宇宙学", "物理分支", "对象", "研究恒星、星系、黑洞、宇宙演化和大尺度结构。"),
+          node("p_experiment", "实验物理", "物理分支", "方法", "通过测量、仪器和数据分析检验理论。"),
+          node("p_applied", "应用物理", "物理分支", "应用", "把物理规律转化为材料、器件、能源和工程技术。"),
+
+          node("q_quantum_gravity", "量子引力", "未解问题", "时空", "如何把量子力学和广义相对论统一成自洽的引力理论。"),
+          node("q_dark_matter", "暗物质本质", "未解问题", "宇宙", "大量天文证据指向暗物质存在，但其粒子或机制仍未确定。"),
+          node("q_dark_energy", "暗能量与宇宙加速", "未解问题", "宇宙", "宇宙加速膨胀的根源、暗能量是否为宇宙常数仍未定论。"),
+          node("q_matter_asymmetry", "物质-反物质不对称", "未解问题", "粒子", "早期宇宙为何留下物质多于反物质，是粒子物理和宇宙学的共同难题。"),
+          node("q_measurement", "量子测量问题", "未解问题", "量子", "量子态如何在测量中呈现确定结果，仍涉及理论解释和基础问题。"),
+          node("q_black_hole_info", "黑洞信息问题", "未解问题", "黑洞", "黑洞蒸发是否保存信息，以及信息如何编码和释放仍是前沿问题。"),
+          node("q_turbulence", "湍流问题", "未解问题", "流体", "湍流的普适规律和三维Navier-Stokes方程的严格性质仍未完全解决。"),
+          node("q_high_tc", "高温超导机理", "未解问题", "材料", "铜氧化物等非常规超导材料的配对机制和统一理论仍不完整。"),
+          node("q_confinement", "强相互作用禁闭", "未解问题", "强相互作用", "夸克为何不能被单独观测，以及质量缺口如何严格建立仍是核心问题。"),
+          node("q_neutrino", "中微子质量起源", "未解问题", "粒子", "中微子质量的机制、质量排序和是否为马约拉纳粒子仍待确认。")
+        ],
+        edges: [
+          edge("m_algebra", "b_symmetry", "抽象对称", 1),
+          edge("m_linear", "b_equation", "状态与算符", 1),
+          edge("m_analysis", "b_equation", "连续变化", 1),
+          edge("m_pde", "b_equation", "演化规律", 1),
+          edge("m_geometry", "b_space", "曲率与流形", 1),
+          edge("m_topology", "b_space", "整体不变量", 1),
+          edge("m_probability", "b_random", "随机模型", 1),
+          edge("m_numeric", "b_computation", "模拟求解", 1),
+          edge("m_info", "b_information", "编码与复杂性", 1),
+          edge("m_discrete", "b_computation", "格点与网络", 2),
+          edge("m_logic", "b_information", "形式系统", 3),
+
+          edge("b_symmetry", "p_mechanics", "守恒量", 1),
+          edge("b_symmetry", "p_quantum", "选择定则", 1),
+          edge("b_symmetry", "p_particle", "粒子分类", 1),
+          edge("b_symmetry", "p_condensed", "晶体与相", 2),
+          edge("b_equation", "p_mechanics", "运动方程", 1),
+          edge("b_equation", "p_em", "场方程", 1),
+          edge("b_equation", "p_quantum", "薛定谔方程", 1),
+          edge("b_equation", "p_relativity", "爱因斯坦方程", 1),
+          edge("b_equation", "p_fluid", "流体方程", 1),
+          edge("b_equation", "p_astro", "演化模型", 2),
+          edge("b_space", "p_relativity", "时空几何", 1),
+          edge("b_space", "p_particle", "规范场", 2),
+          edge("b_space", "p_astro", "宇宙结构", 2),
+          edge("b_space", "p_condensed", "拓扑物态", 2),
+          edge("b_random", "p_thermo", "统计规律", 1),
+          edge("b_random", "p_quantum", "测量概率", 1),
+          edge("b_random", "p_experiment", "误差与推断", 1),
+          edge("b_random", "p_astro", "观测数据", 2),
+          edge("b_computation", "p_fluid", "湍流模拟", 1),
+          edge("b_computation", "p_condensed", "材料计算", 1),
+          edge("b_computation", "p_particle", "格点场论", 2),
+          edge("b_computation", "p_astro", "数值宇宙", 2),
+          edge("b_computation", "p_applied", "工程优化", 1),
+          edge("b_information", "p_quantum", "量子信息", 1),
+          edge("b_information", "p_experiment", "数据处理", 2),
+          edge("b_information", "p_applied", "信号与控制", 2),
+
+          edge("p_mechanics", "m_analysis", "推动微积分与变分法", 2, "feedback"),
+          edge("p_relativity", "m_geometry", "推动黎曼几何", 1, "feedback"),
+          edge("p_quantum", "m_analysis", "推动泛函分析", 1, "feedback"),
+          edge("p_quantum", "m_linear", "推动谱理论", 2, "feedback"),
+          edge("p_particle", "m_algebra", "推动群论与表示论", 1, "feedback"),
+          edge("p_condensed", "m_topology", "推动拓扑相研究", 1, "feedback"),
+          edge("p_fluid", "m_pde", "推动非线性方程", 1, "feedback"),
+          edge("p_thermo", "m_probability", "推动随机过程", 1, "feedback"),
+          edge("p_em", "m_analysis", "推动向量分析", 2, "feedback"),
+          edge("p_experiment", "m_probability", "推动统计推断", 2, "feedback"),
+
+          edge("p_quantum", "q_quantum_gravity", "量子与引力统一", 1),
+          edge("p_relativity", "q_quantum_gravity", "时空量子化", 1),
+          edge("p_particle", "q_quantum_gravity", "统一相互作用", 2),
+          edge("p_astro", "q_dark_matter", "引力证据", 1),
+          edge("p_particle", "q_dark_matter", "候选粒子", 1),
+          edge("p_astro", "q_dark_energy", "宇宙加速", 1),
+          edge("p_relativity", "q_dark_energy", "宇宙常数问题", 2),
+          edge("p_particle", "q_matter_asymmetry", "CP破坏与重子生成", 1),
+          edge("p_astro", "q_matter_asymmetry", "早期宇宙", 2),
+          edge("p_quantum", "q_measurement", "测量与退相干", 1),
+          edge("p_relativity", "q_black_hole_info", "事件视界与蒸发", 1),
+          edge("p_quantum", "q_black_hole_info", "量子信息保存", 1),
+          edge("p_astro", "q_black_hole_info", "黑洞观测背景", 2),
+          edge("p_fluid", "q_turbulence", "湍流规律", 1),
+          edge("m_pde", "q_turbulence", "方程存在性", 1),
+          edge("p_condensed", "q_high_tc", "非常规超导", 1),
+          edge("p_quantum", "q_high_tc", "量子多体机制", 2),
+          edge("p_particle", "q_confinement", "量子色动力学", 1),
+          edge("p_nuclear", "q_confinement", "强相互作用物质", 2),
+          edge("m_algebra", "q_confinement", "规范对称结构", 2),
+          edge("p_particle", "q_neutrino", "质量与混合", 1),
+          edge("p_nuclear", "q_neutrino", "双β衰变实验", 2),
+          edge("p_astro", "q_neutrino", "宇宙中微子", 2)
+        ]
+      },
+
+      physics: {
+        nodes: [
+          node("ph_mechanics", "经典力学", "基础理论", "力学", "低速宏观世界的运动、力、能量、动量和守恒律。"),
+          node("ph_em", "电磁学", "基础理论", "场", "电场、磁场、电磁波以及光的经典基础。"),
+          node("ph_thermo", "热学与统计物理", "基础理论", "统计", "温度、熵、相变和大量粒子的集体行为。"),
+          node("ph_quantum", "量子力学", "基础理论", "微观", "微观系统的状态、概率、能级、叠加与纠缠。"),
+          node("ph_relativity", "相对论", "基础理论", "时空", "高速运动、时空结构、引力和宇宙尺度现象。"),
+
+          node("ph_atomic", "原子、分子与光物理", "研究对象", "微观", "原子能级、分子结构、光谱、激光和光与物质相互作用。"),
+          node("ph_condensed", "凝聚态物理", "研究对象", "材料", "固体、液体、软物质、半导体、超导和拓扑物态。"),
+          node("ph_particle", "粒子物理", "研究对象", "高能", "基本粒子、相互作用、标准模型和高能碰撞。"),
+          node("ph_nuclear", "核物理", "研究对象", "原子核", "原子核结构、衰变、裂变、聚变和核能。"),
+          node("ph_plasma", "等离子体物理", "研究对象", "带电介质", "带电粒子的集体运动、磁约束和空间等离子体。"),
+          node("ph_fluid", "流体物理", "研究对象", "连续介质", "液体和气体运动、波、湍流、边界层和输运。"),
+          node("ph_astro", "天体物理与宇宙学", "研究对象", "宇宙", "恒星、星系、黑洞、宇宙背景和大尺度结构。"),
+          node("ph_geo", "地球物理", "研究对象", "地球", "地震、地磁、大气、海洋和地球内部结构。"),
+          node("ph_bio", "生物物理", "研究对象", "生命系统", "细胞、膜、蛋白质、神经信号和生命过程中的物理规律。"),
+
+          node("ph_mathphys", "数学物理", "方法与应用", "理论方法", "用严密数学结构组织和深化物理理论。"),
+          node("ph_compphys", "计算物理", "方法与应用", "计算", "用数值模拟研究复杂系统。"),
+          node("ph_experiment", "实验物理", "方法与应用", "实验", "用仪器、测量和数据分析检验理论。"),
+          node("ph_applied", "应用物理与工程物理", "方法与应用", "工程", "把物理规律转化为材料、器件、能源和技术。"),
+
+          node("phq_quantum_gravity", "量子引力", "未解问题", "时空", "量子力学和广义相对论如何在极端尺度下统一。"),
+          node("phq_dark_matter", "暗物质本质", "未解问题", "宇宙", "暗物质的组成、相互作用和可探测信号仍未确认。"),
+          node("phq_dark_energy", "暗能量与宇宙加速", "未解问题", "宇宙", "宇宙加速膨胀背后的物理机制仍不清楚。"),
+          node("phq_matter_asymmetry", "物质-反物质不对称", "未解问题", "粒子", "为什么可见宇宙几乎由物质而非反物质构成。"),
+          node("phq_measurement", "量子测量问题", "未解问题", "量子", "量子测量、波函数坍缩和经典结果出现的机制仍有争议。"),
+          node("phq_black_hole_info", "黑洞信息问题", "未解问题", "黑洞", "黑洞蒸发与量子信息守恒之间的关系仍在研究中。"),
+          node("phq_turbulence", "湍流规律", "未解问题", "流体", "湍流的多尺度结构、可预测性和严格理论仍未完整建立。"),
+          node("phq_high_tc", "高温超导机理", "未解问题", "材料", "非常规高温超导的微观配对机制仍未形成统一图景。"),
+          node("phq_confinement", "夸克禁闭", "未解问题", "强相互作用", "强相互作用为何把夸克永久束缚在强子内部仍需严格解释。"),
+          node("phq_neutrino", "中微子质量起源", "未解问题", "粒子", "中微子质量、质量排序和马约拉纳性质仍是实验与理论前沿。")
+        ],
+        edges: [
+          edge("ph_mechanics", "ph_relativity", "低速极限与高速推广", 1),
+          edge("ph_mechanics", "ph_fluid", "连续介质运动", 1),
+          edge("ph_mechanics", "ph_thermo", "分子运动基础", 2),
+          edge("ph_em", "ph_atomic", "光谱与激光", 1),
+          edge("ph_em", "ph_plasma", "带电粒子与场", 1),
+          edge("ph_em", "ph_condensed", "电性与磁性材料", 1),
+          edge("ph_em", "ph_applied", "通信、器件、能源", 1),
+          edge("ph_thermo", "ph_condensed", "相变与集体行为", 1),
+          edge("ph_thermo", "ph_astro", "恒星与辐射", 1),
+          edge("ph_thermo", "ph_bio", "生命系统的能量与熵", 2),
+          edge("ph_quantum", "ph_atomic", "能级与光谱", 1),
+          edge("ph_quantum", "ph_condensed", "能带与多体系统", 1),
+          edge("ph_quantum", "ph_particle", "量子场论", 1),
+          edge("ph_quantum", "ph_nuclear", "核能级与衰变", 1),
+          edge("ph_relativity", "ph_astro", "黑洞与宇宙膨胀", 1),
+          edge("ph_particle", "ph_nuclear", "强相互作用", 1),
+          edge("ph_particle", "ph_astro", "早期宇宙与暗物质", 2),
+          edge("ph_nuclear", "ph_astro", "恒星核聚变", 1),
+          edge("ph_plasma", "ph_astro", "太阳风与星际介质", 1),
+          edge("ph_plasma", "ph_applied", "可控核聚变", 1),
+          edge("ph_fluid", "ph_geo", "大气海洋与地幔流动", 1),
+          edge("ph_fluid", "ph_bio", "血流与呼吸", 2),
+          edge("ph_condensed", "ph_applied", "半导体与材料", 1),
+          edge("ph_atomic", "ph_applied", "激光与精密测量", 1),
+          edge("ph_mathphys", "ph_quantum", "理论语言", 1),
+          edge("ph_mathphys", "ph_relativity", "几何结构", 1),
+          edge("ph_compphys", "ph_fluid", "湍流模拟", 1),
+          edge("ph_compphys", "ph_condensed", "材料模拟", 1),
+          edge("ph_compphys", "ph_astro", "天体演化模拟", 1),
+          edge("ph_experiment", "ph_particle", "加速器实验", 1),
+          edge("ph_experiment", "ph_condensed", "材料测量", 2),
+          edge("ph_experiment", "ph_atomic", "光谱测量", 2),
+
+          edge("ph_quantum", "phq_quantum_gravity", "量子理论缺口", 1),
+          edge("ph_relativity", "phq_quantum_gravity", "引力理论缺口", 1),
+          edge("ph_mathphys", "phq_quantum_gravity", "统一框架", 2),
+          edge("ph_astro", "phq_dark_matter", "天文证据", 1),
+          edge("ph_particle", "phq_dark_matter", "粒子候选", 1),
+          edge("ph_astro", "phq_dark_energy", "宇宙加速", 1),
+          edge("ph_relativity", "phq_dark_energy", "宇宙常数", 2),
+          edge("ph_particle", "phq_matter_asymmetry", "CP破坏", 1),
+          edge("ph_astro", "phq_matter_asymmetry", "早期宇宙", 2),
+          edge("ph_quantum", "phq_measurement", "测量基础", 1),
+          edge("ph_relativity", "phq_black_hole_info", "黑洞时空", 1),
+          edge("ph_quantum", "phq_black_hole_info", "量子信息", 1),
+          edge("ph_fluid", "phq_turbulence", "非线性流动", 1),
+          edge("ph_compphys", "phq_turbulence", "数值模拟", 2),
+          edge("ph_condensed", "phq_high_tc", "非常规材料", 1),
+          edge("ph_quantum", "phq_high_tc", "量子多体", 2),
+          edge("ph_particle", "phq_confinement", "强相互作用", 1),
+          edge("ph_nuclear", "phq_confinement", "强子与核物质", 2),
+          edge("ph_particle", "phq_neutrino", "质量机制", 1),
+          edge("ph_nuclear", "phq_neutrino", "双β衰变", 2),
+          edge("ph_experiment", "phq_neutrino", "精密探测", 2)
+        ]
+      },
+
+      math: {
+        nodes: [
+          node("ma_logic", "数学基础与逻辑", "基础语言", "基础", "研究命题、证明、形式系统和数学结构的根基。"),
+          node("ma_set", "集合论", "基础语言", "基础", "为现代数学提供对象、函数、关系和空间的基本语言。"),
+
+          node("ma_algebra", "代数学", "核心结构", "结构", "研究群、环、域、模和各种抽象结构。"),
+          node("ma_linear", "线性代数", "核心结构", "结构", "研究向量空间、矩阵、线性变换、本征值和线性结构。"),
+          node("ma_number", "数论", "核心结构", "数", "研究整数、素数、同余、代数数和算术结构。"),
+          node("ma_geometry", "几何学", "核心结构", "空间", "研究形状、距离、曲率、变换和空间结构。"),
+          node("ma_topology", "拓扑学", "核心结构", "空间", "研究连续变形下保持不变的性质。"),
+          node("ma_analysis", "分析学", "核心结构", "连续", "研究极限、函数、导数、积分、测度和函数空间。"),
+          node("ma_probability", "概率论", "核心结构", "随机", "研究随机现象、分布、期望、极限定理和随机过程。"),
+
+          node("ma_pde", "微分方程", "方法工具", "方程", "用方程描述变化和演化。"),
+          node("ma_dynamical", "动力系统", "方法工具", "演化", "研究系统随时间变化的长期行为。"),
+          node("ma_statistics", "统计学", "方法工具", "数据", "从数据推断模型、规律和不确定性。"),
+          node("ma_combinatorics", "组合数学", "方法工具", "离散", "研究计数、排列、组合结构和离散对象。"),
+          node("ma_graph", "图论", "方法工具", "网络", "研究点和边构成的网络结构。"),
+          node("ma_computation", "计算数学", "方法工具", "算法", "研究可计算方法、算法和复杂模型求解。"),
+          node("ma_numerical", "数值分析", "方法工具", "计算", "研究连续问题的可靠近似计算。"),
+          node("ma_optimization", "优化与运筹学", "方法工具", "决策", "研究最优解、资源配置、路径和约束问题。"),
+
+          node("ma_mathphysics", "数学物理", "应用连接", "物理", "用数学结构组织物理理论。"),
+          node("ma_info", "信息、数据与机器学习数学", "应用连接", "信息", "连接概率、统计、优化、线性代数和计算。"),
+          node("ma_finance", "金融数学", "应用连接", "金融", "研究随机过程、风险、定价和投资组合。"),
+          node("ma_bio", "生物数学", "应用连接", "生命", "用数学模型研究生命系统和生物数据。"),
+          node("ma_applied", "应用数学", "应用连接", "应用", "把数学模型和方法用于科学、工程和社会问题。"),
+
+          node("maq_riemann", "黎曼猜想", "未解问题", "数论", "黎曼ζ函数非平凡零点是否都位于临界线上，深刻关联素数分布。"),
+          node("maq_p_np", "P vs NP", "未解问题", "计算", "所有能快速验证的问题是否也能快速求解，是计算复杂性核心问题。"),
+          node("maq_navier", "N-S存在性", "未解问题", "方程", "三维不可压Navier-Stokes方程的全局光滑解是否总存在仍未解决。"),
+          node("maq_yang_mills", "Yang-Mills质量缺口", "未解问题", "场论", "严格建立四维Yang-Mills理论并证明质量缺口是数学物理核心难题。"),
+          node("maq_hodge", "Hodge猜想", "未解问题", "几何", "代数簇上的某些上同调类是否都来自代数子簇仍未解决。"),
+          node("maq_bsd", "BSD猜想", "未解问题", "数论", "椭圆曲线有理点结构与L函数在1点的行为之间的关系仍待证明。"),
+          node("maq_twin_prime", "孪生素数猜想", "未解问题", "数论", "是否存在无穷多对相差2的素数仍未证明。"),
+          node("maq_collatz", "Collatz猜想", "未解问题", "动力", "任意正整数按3n+1规则迭代是否最终到达1仍未知。")
+        ],
+        edges: [
+          edge("ma_logic", "ma_set", "形式基础", 1),
+          edge("ma_logic", "ma_algebra", "公理结构", 2),
+          edge("ma_set", "ma_topology", "集合与开集", 1),
+          edge("ma_set", "ma_analysis", "实数与函数", 1),
+          edge("ma_algebra", "ma_linear", "向量空间与矩阵", 1),
+          edge("ma_algebra", "ma_number", "代数数论", 1),
+          edge("ma_algebra", "ma_geometry", "代数几何", 1),
+          edge("ma_algebra", "ma_topology", "代数拓扑", 1),
+          edge("ma_linear", "ma_geometry", "坐标与变换", 1),
+          edge("ma_linear", "ma_numerical", "矩阵计算", 1),
+          edge("ma_linear", "ma_optimization", "线性与凸优化", 1),
+          edge("ma_linear", "ma_info", "机器学习基础", 1),
+          edge("ma_linear", "ma_mathphysics", "量子态与算符", 1),
+          edge("ma_number", "ma_analysis", "解析数论", 1),
+          edge("ma_number", "ma_info", "密码与编码", 1),
+          edge("ma_geometry", "ma_topology", "空间整体结构", 1),
+          edge("ma_geometry", "ma_analysis", "微分几何", 1),
+          edge("ma_geometry", "ma_mathphysics", "时空与场", 1),
+          edge("ma_topology", "ma_mathphysics", "拓扑场论", 2),
+          edge("ma_analysis", "ma_pde", "连续方程", 1),
+          edge("ma_analysis", "ma_probability", "测度论基础", 1),
+          edge("ma_analysis", "ma_numerical", "误差与收敛", 2),
+          edge("ma_pde", "ma_dynamical", "演化系统", 1),
+          edge("ma_pde", "ma_mathphysics", "物理方程", 1),
+          edge("ma_pde", "ma_numerical", "近似求解", 1),
+          edge("ma_probability", "ma_statistics", "模型与推断", 1),
+          edge("ma_probability", "ma_finance", "随机过程", 1),
+          edge("ma_probability", "ma_bio", "随机生物模型", 2),
+          edge("ma_statistics", "ma_info", "数据学习", 1),
+          edge("ma_combinatorics", "ma_graph", "离散结构", 1),
+          edge("ma_combinatorics", "ma_probability", "随机组合", 2),
+          edge("ma_graph", "ma_optimization", "网络优化", 1),
+          edge("ma_graph", "ma_info", "网络数据", 1),
+          edge("ma_computation", "ma_numerical", "算法实现", 1),
+          edge("ma_computation", "ma_info", "计算模型", 1),
+          edge("ma_numerical", "ma_applied", "科学计算", 1),
+          edge("ma_optimization", "ma_info", "模型训练", 1),
+          edge("ma_optimization", "ma_finance", "资源配置", 1),
+          edge("ma_info", "ma_applied", "数据驱动建模", 1),
+          edge("ma_mathphysics", "ma_applied", "理论模型", 2),
+          edge("ma_bio", "ma_applied", "生命系统建模", 2),
+
+          edge("ma_number", "maq_riemann", "素数分布", 1),
+          edge("ma_analysis", "maq_riemann", "复分析与ζ函数", 1),
+          edge("ma_computation", "maq_p_np", "复杂性理论", 1),
+          edge("ma_graph", "maq_p_np", "离散结构", 2),
+          edge("ma_optimization", "maq_p_np", "可求解性边界", 2),
+          edge("ma_pde", "maq_navier", "流体方程", 1),
+          edge("ma_analysis", "maq_navier", "存在性与光滑性", 1),
+          edge("ma_numerical", "maq_navier", "数值检验与模拟", 2),
+          edge("ma_mathphysics", "maq_yang_mills", "量子场论严格化", 1),
+          edge("ma_algebra", "maq_yang_mills", "规范对称", 2),
+          edge("ma_analysis", "maq_yang_mills", "质量缺口", 1),
+          edge("ma_geometry", "maq_hodge", "代数几何", 1),
+          edge("ma_topology", "maq_hodge", "上同调结构", 1),
+          edge("ma_algebra", "maq_hodge", "代数簇", 2),
+          edge("ma_number", "maq_bsd", "椭圆曲线算术", 1),
+          edge("ma_algebra", "maq_bsd", "代数结构", 1),
+          edge("ma_analysis", "maq_bsd", "L函数", 2),
+          edge("ma_number", "maq_twin_prime", "素数间距", 1),
+          edge("ma_combinatorics", "maq_twin_prime", "筛法思想", 2),
+          edge("ma_number", "maq_collatz", "整数迭代", 1),
+          edge("ma_dynamical", "maq_collatz", "离散动力系统", 1)
+        ]
+      }
+    };
+
+    const COLOR_BY_COLUMN = {
+      "数学工具": "#2563eb",
+      "桥梁主题": "#7c3aed",
+      "物理分支": "#d97706",
+      "基础理论": "#0f766e",
+      "研究对象": "#d97706",
+      "方法与应用": "#be123c",
+      "基础语言": "#2563eb",
+      "核心结构": "#0f766e",
+      "方法工具": "#be123c",
+      "应用连接": "#15803d",
+      "未解问题": "#dc2626"
+    };
+
+    const state = {
+      mode: "combined",
+      selectedNode: null,
+      selectedEdge: null,
+      hoveredNode: null,
+      hoveredEdge: null,
+      query: "",
+      layers: new Set(),
+      density: 1,
+      focus: true,
+      zoom: 1,
+      pan: { x: 0, y: 0 },
+      customPositions: {},
+      suppressClick: false
+    };
+
+    const svg = document.getElementById("graph");
+    const searchInput = document.getElementById("searchInput");
+    const layerFilters = document.getElementById("layerFilters");
+    const densityInput = document.getElementById("densityInput");
+    const focusToggle = document.getElementById("focusToggle");
+    const modeLine = document.getElementById("modeLine");
+    const detailKicker = document.getElementById("detailKicker");
+    const detailTitle = document.getElementById("detailTitle");
+    const detailBody = document.getElementById("detailBody");
+
+    function node(id, label, column, tag, description) {
+      return { id, label, column, tag, description };
+    }
+
+    function edge(source, target, label, level, type = "support") {
+      return { id: `${source}__${target}__${label}`, source, target, label, level, type };
+    }
+
+    function getModeData() {
+      return DATA[state.mode];
+    }
+
+    function getNodeMap() {
+      return new Map(getModeData().nodes.map((item) => [item.id, item]));
+    }
+
+    function resetView() {
+      state.zoom = 1;
+      state.pan = { x: 0, y: 0 };
+      state.customPositions[state.mode] = {};
+      clearInteractionState();
+      render();
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      state.selectedNode = null;
+      state.selectedEdge = null;
+      state.hoveredNode = null;
+      state.hoveredEdge = null;
+      state.zoom = 1;
+      state.pan = { x: 0, y: 0 };
+      const columns = MODE_META[mode].columns.map((column) => column.key);
+      state.layers = new Set(columns);
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.setAttribute("aria-selected", String(tab.dataset.mode === mode));
+      });
+      renderLayerFilters();
+      render();
+    }
+
+    function renderLayerFilters() {
+      layerFilters.replaceChildren();
+      MODE_META[state.mode].columns.forEach((column) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `chip ${state.layers.has(column.key) ? "active" : ""}`;
+        button.textContent = column.key;
+        button.style.borderColor = state.layers.has(column.key) ? column.color : "";
+        button.addEventListener("click", () => {
+          if (state.layers.has(column.key)) {
+            state.layers.delete(column.key);
+          } else {
+            state.layers.add(column.key);
+          }
+          if (state.layers.size === 0) {
+            MODE_META[state.mode].columns.forEach((item) => state.layers.add(item.key));
+          }
+          state.selectedNode = null;
+          state.selectedEdge = null;
+          renderLayerFilters();
+          render();
+        });
+        layerFilters.append(button);
+      });
+    }
+
+    function computePositions() {
+      const mode = MODE_META[state.mode];
+      const groups = new Map();
+      getModeData().nodes.forEach((item) => {
+        if (!groups.has(item.column)) groups.set(item.column, []);
+        groups.get(item.column).push(item);
+      });
+
+      const positions = {};
+      mode.columns.forEach((column) => {
+        const items = groups.get(column.key) || [];
+        const top = 160;
+        const bottom = items.length > 10 ? 790 : 762;
+        const gap = items.length <= 1 ? 0 : (bottom - top) / (items.length - 1);
+        items.forEach((item, index) => {
+          positions[item.id] = {
+            x: column.x,
+            y: items.length === 1 ? (top + bottom) / 2 : top + gap * index
+          };
+        });
+      });
+
+      const custom = state.customPositions[state.mode] || {};
+      Object.keys(custom).forEach((id) => {
+        positions[id] = { ...positions[id], ...custom[id] };
+      });
+      return positions;
+    }
+
+    function isNodeVisible(item) {
+      return state.layers.has(item.column);
+    }
+
+    function searchMatches(item) {
+      if (!state.query) return true;
+      return `${item.label} ${item.column} ${item.tag} ${item.description}`.toLowerCase().includes(state.query);
+    }
+
+    function getAdjacency(visibleEdges = getModeData().edges) {
+      const selected = state.selectedNode || (!hasSelection() ? state.hoveredNode : null);
+      const activeEdge = state.selectedEdge || (!hasSelection() ? state.hoveredEdge : null);
+      const adjacentNodes = new Set();
+      const adjacentEdges = new Set();
+      if (selected) {
+        adjacentNodes.add(selected);
+        visibleEdges.forEach((item) => {
+          if (item.source === selected || item.target === selected) {
+            adjacentEdges.add(item.id);
+            adjacentNodes.add(item.source);
+            adjacentNodes.add(item.target);
+          }
+        });
+      }
+      if (activeEdge) {
+        const item = visibleEdges.find((candidate) => candidate.id === activeEdge);
+        if (item) {
+          adjacentEdges.add(item.id);
+          adjacentNodes.add(item.source);
+          adjacentNodes.add(item.target);
+        }
+      }
+      return { selected, activeEdge, adjacentNodes, adjacentEdges };
+    }
+
+    function render() {
+      const data = getModeData();
+      const nodeMap = getNodeMap();
+      const positions = computePositions();
+      const shownNodes = data.nodes.filter(isNodeVisible);
+      const shownNodeIds = new Set(shownNodes.map((item) => item.id));
+      const shownEdges = data.edges.filter((item) => {
+        return shownNodeIds.has(item.source) &&
+          shownNodeIds.has(item.target) &&
+          item.level <= Number(state.density);
+      });
+      const shownEdgeIds = new Set(shownEdges.map((item) => item.id));
+      normalizeSelection(shownNodeIds, shownEdgeIds);
+      const adjacency = getAdjacency(shownEdges);
+
+      modeLine.textContent = MODE_META[state.mode].line;
+      svg.replaceChildren();
+
+      const defs = createSvg("defs");
+      defs.innerHTML = `
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa8b7"></path>
+        </marker>
+      `;
+      svg.append(defs);
+
+      const viewport = createSvg("g", { transform: `translate(${state.pan.x} ${state.pan.y}) scale(${state.zoom})` });
+      svg.append(viewport);
+
+      renderZones(viewport);
+
+      const edgeLayer = createSvg("g", { class: "edges" });
+      const labelLayer = createSvg("g", { class: "edge-labels" });
+      const nodeLayer = createSvg("g", { class: "nodes" });
+      viewport.append(edgeLayer, labelLayer, nodeLayer);
+
+      shownEdges.forEach((item) => {
+        const source = positions[item.source];
+        const target = positions[item.target];
+        if (!source || !target) return;
+
+        const path = createSvg("path", {
+          class: edgeClass(item, adjacency),
+          d: curvePath(source, target),
+          stroke: edgeColor(item, nodeMap),
+          "marker-end": item.type === "feedback" ? "url(#arrow)" : "",
+          "data-edge-id": item.id
+        });
+        path.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (state.suppressClick) return;
+          state.selectedEdge = item.id;
+          state.selectedNode = null;
+          clearHoverState();
+          render();
+        });
+        edgeLayer.append(path);
+
+        if (item.id === adjacency.activeEdge || adjacency.adjacentEdges.has(item.id) && (state.hoveredNode || state.selectedNode)) {
+          renderEdgeLabel(labelLayer, source, target, item.label);
+        }
+      });
+
+      shownNodes.forEach((item) => {
+        const point = positions[item.id];
+        if (!point) return;
+        const group = createSvg("g", {
+          class: nodeClass(item, adjacency),
+          transform: `translate(${point.x} ${point.y})`,
+          "data-node-id": item.id
+        });
+        group.addEventListener("pointerdown", (event) => startNodeDrag(event, item.id));
+        group.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (state.suppressClick) {
+            state.suppressClick = false;
+            return;
+          }
+          state.selectedNode = item.id;
+          state.selectedEdge = null;
+          clearHoverState();
+          render();
+        });
+
+        const color = COLOR_BY_COLUMN[item.column] || "#64748b";
+        const rect = createSvg("rect", {
+          class: "card",
+          x: -NODE.width / 2,
+          y: -NODE.height / 2,
+          width: NODE.width,
+          height: NODE.height,
+          rx: 8,
+          ry: 8,
+          stroke: color
+        });
+        const stripe = createSvg("rect", {
+          class: "stripe",
+          x: -NODE.width / 2,
+          y: -NODE.height / 2,
+          width: 7,
+          height: NODE.height,
+          rx: 5,
+          ry: 5,
+          fill: color
+        });
+        const title = createWrappedText(item.label, 0, -5, 15, 9, "title-text");
+        const mini = createSvg("text", { class: "mini", x: 0, y: 21, "text-anchor": "middle" });
+        mini.textContent = item.tag;
+        group.append(rect, stripe, title, mini);
+        nodeLayer.append(group);
+      });
+
+      renderDetails(shownNodes, shownEdges, nodeMap, adjacency);
+    }
+
+    function normalizeSelection(shownNodeIds, shownEdgeIds) {
+      if (state.selectedNode && !shownNodeIds.has(state.selectedNode)) state.selectedNode = null;
+      if (state.hoveredNode && !shownNodeIds.has(state.hoveredNode)) state.hoveredNode = null;
+      if (state.selectedEdge && !shownEdgeIds.has(state.selectedEdge)) state.selectedEdge = null;
+      if (state.hoveredEdge && !shownEdgeIds.has(state.hoveredEdge)) state.hoveredEdge = null;
+    }
+
+    function hasSelection() {
+      return Boolean(state.selectedNode || state.selectedEdge);
+    }
+
+    function clearHoverState() {
+      state.hoveredNode = null;
+      state.hoveredEdge = null;
+    }
+
+    function clearInteractionState() {
+      state.selectedNode = null;
+      state.selectedEdge = null;
+      clearHoverState();
+    }
+
+    function renderZones(viewport) {
+      const zoneLayer = createSvg("g", { class: "zones" });
+      MODE_META[state.mode].columns.forEach((column) => {
+        const width = state.mode === "math" ? 252 : 282;
+        const zone = createSvg("g", { class: "zone" });
+        const rect = createSvg("rect", {
+          x: column.x - width / 2,
+          y: 92,
+          width,
+          height: 730,
+          rx: 8,
+          ry: 8,
+          fill: column.color,
+          opacity: 0.9
+        });
+        const labelBg = createSvg("rect", {
+          x: column.x - 72,
+          y: 48,
+          width: 144,
+          height: 34,
+          rx: 8,
+          ry: 8,
+          fill: "#ffffff",
+          stroke: "#dbe3ec"
+        });
+        const text = createSvg("text", {
+          x: column.x,
+          y: 71,
+          "text-anchor": "middle"
+        });
+        text.textContent = column.key;
+        zone.append(rect, labelBg, text);
+        zoneLayer.append(zone);
+      });
+      viewport.append(zoneLayer);
+    }
+
+    function edgeClass(item, adjacency) {
+      const classes = ["edge", item.type];
+      const focused = state.focus && (adjacency.selected || adjacency.activeEdge);
+      const active = item.id === adjacency.activeEdge || adjacency.adjacentEdges.has(item.id);
+      if (active) classes.push("active");
+      if (focused && !active) classes.push("dimmed");
+      return classes.join(" ");
+    }
+
+    function nodeClass(item, adjacency) {
+      const classes = ["node"];
+      const focused = state.focus && (adjacency.selected || adjacency.activeEdge);
+      const active = item.id === state.selectedNode || item.id === state.hoveredNode || adjacency.adjacentNodes.has(item.id);
+      const queryActive = Boolean(state.query);
+      if (queryActive && !searchMatches(item) && !active) classes.push("dimmed");
+      if (searchMatches(item) && queryActive) classes.push("match");
+      if (item.id === state.selectedNode) classes.push("active");
+      if (item.id === state.hoveredNode) classes.push("hovered");
+      if (focused && !active) classes.push("dimmed");
+      return classes.filter(Boolean).join(" ");
+    }
+
+    function edgeColor(item, nodeMap) {
+      if (item.type === "feedback") return "#64748b";
+      const source = nodeMap.get(item.source);
+      const target = nodeMap.get(item.target);
+      if (source && source.column === "桥梁主题") return COLOR_BY_COLUMN[target.column] || "#9aa8b7";
+      if (target && target.column === "桥梁主题") return COLOR_BY_COLUMN[source.column] || "#9aa8b7";
+      return COLOR_BY_COLUMN[target?.column] || COLOR_BY_COLUMN[source?.column] || "#9aa8b7";
+    }
+
+    function curvePath(source, target) {
+      const dx = target.x - source.x;
+      const dy = target.y - source.y;
+      const bend = Math.max(70, Math.min(190, Math.abs(dx) * 0.38));
+      if (Math.abs(dx) < 80) {
+        const side = dy > 0 ? 1 : -1;
+        return `M ${source.x} ${source.y} C ${source.x + 90} ${source.y + side * 45}, ${target.x + 90} ${target.y - side * 45}, ${target.x} ${target.y}`;
+      }
+      return `M ${source.x} ${source.y} C ${source.x + Math.sign(dx) * bend} ${source.y}, ${target.x - Math.sign(dx) * bend} ${target.y}, ${target.x} ${target.y}`;
+    }
+
+    function renderEdgeLabel(layer, source, target, label) {
+      const x = (source.x + target.x) / 2;
+      const y = (source.y + target.y) / 2;
+      const width = Math.min(166, Math.max(64, label.length * 14));
+      const group = createSvg("g", { class: "edge-label", transform: `translate(${x} ${y})` });
+      group.append(createSvg("rect", { x: -width / 2, y: -15, width, height: 30 }));
+      const text = createSvg("text", { x: 0, y: 5, "text-anchor": "middle" });
+      text.textContent = label;
+      group.append(text);
+      layer.append(group);
+    }
+
+    function createWrappedText(text, x, y, lineHeight, maxChars, className) {
+      const group = createSvg("text", { class: className, x, y, "text-anchor": "middle" });
+      const lines = wrapText(text, maxChars).slice(0, 2);
+      const startY = y - ((lines.length - 1) * lineHeight) / 2;
+      lines.forEach((line, index) => {
+        const tspan = createSvg("tspan", { x, y: startY + index * lineHeight });
+        tspan.textContent = line;
+        group.append(tspan);
+      });
+      return group;
+    }
+
+    function wrapText(text, maxChars) {
+      if (text.length <= maxChars) return [text];
+      const punctuation = ["、", "与", "和", "及", "，"];
+      const lines = [];
+      let rest = text;
+      while (rest.length > maxChars && lines.length < 2) {
+        let cut = maxChars;
+        for (let index = maxChars; index >= Math.max(4, maxChars - 4); index -= 1) {
+          if (punctuation.includes(rest[index])) {
+            cut = index + 1;
+            break;
+          }
+        }
+        lines.push(rest.slice(0, cut));
+        rest = rest.slice(cut);
+      }
+      if (rest) lines.push(rest);
+      if (lines.length > 2) {
+        lines[1] = `${lines[1].slice(0, maxChars - 1)}…`;
+      }
+      return lines;
+    }
+
+    function renderDetails(nodes, edges, nodeMap, adjacency) {
+      const selectedEdge = adjacency.activeEdge ? getModeData().edges.find((item) => item.id === adjacency.activeEdge) : null;
+      const selectedNode = adjacency.selected ? nodeMap.get(adjacency.selected) : null;
+      if (selectedEdge) {
+        const source = nodeMap.get(selectedEdge.source);
+        const target = nodeMap.get(selectedEdge.target);
+        detailKicker.textContent = edgeKicker(selectedEdge);
+        detailTitle.textContent = edgeTitle(selectedEdge, source, target);
+        detailBody.innerHTML = "";
+        detailBody.append(paragraph(selectedEdge.label));
+        detailBody.append(relationCard(source.column, source.label, source.description, COLOR_BY_COLUMN[source.column]));
+        detailBody.append(relationCard(target.column, target.label, target.description, COLOR_BY_COLUMN[target.column]));
+        return;
+      }
+      if (selectedNode) {
+        const relations = getModeData().edges
+          .filter((item) => item.source === selectedNode.id || item.target === selectedNode.id)
+          .filter((item) => item.level <= Number(state.density))
+          .filter((item) => nodeMap.has(item.source) && nodeMap.has(item.target))
+          .filter((item) => isNodeVisible(nodeMap.get(item.source)) && isNodeVisible(nodeMap.get(item.target)));
+        detailKicker.textContent = `${selectedNode.column} · ${selectedNode.tag}`;
+        detailTitle.textContent = selectedNode.label;
+        detailBody.innerHTML = "";
+        detailBody.append(paragraph(selectedNode.description));
+        const list = document.createElement("div");
+        list.className = "relation-list";
+        relations.forEach((item) => {
+          const otherId = item.source === selectedNode.id ? item.target : item.source;
+          const other = nodeMap.get(otherId);
+          const direction = relationRole(item, selectedNode.id);
+          list.append(relationCard(direction, other.label, item.label, COLOR_BY_COLUMN[other.column]));
+        });
+        detailBody.append(list);
+        return;
+      }
+
+      detailKicker.textContent = MODE_META[state.mode].title;
+      detailTitle.textContent = "体系总览";
+      detailBody.innerHTML = "";
+      const metrics = document.createElement("div");
+      metrics.className = "metric-grid";
+      metrics.append(metric(nodes.length, "当前节点"));
+      metrics.append(metric(edges.length, "当前连线"));
+      detailBody.append(metrics);
+      detailBody.append(paragraph(MODE_META[state.mode].overview));
+      detailBody.append(createLegend());
+    }
+
+    function isDirectedEdge(item) {
+      return state.mode === "combined" || item.type === "feedback";
+    }
+
+    function edgeKicker(item) {
+      if (item.type === "feedback") return "物理推动数学";
+      return isDirectedEdge(item) ? "方向性关联" : "双向关联";
+    }
+
+    function edgeTitle(item, source, target) {
+      const connector = isDirectedEdge(item) ? "→" : "↔";
+      return `${source.label} ${connector} ${target.label}`;
+    }
+
+    function relationRole(item, selectedId) {
+      if (!isDirectedEdge(item)) return "关联";
+      if (item.type === "feedback") {
+        return item.source === selectedId ? "推动" : "受推动于";
+      }
+      return item.source === selectedId ? "通向" : "来源";
+    }
+
+    function metric(value, label) {
+      const item = document.createElement("div");
+      item.className = "metric";
+      const strong = document.createElement("strong");
+      strong.textContent = value;
+      const span = document.createElement("span");
+      span.textContent = label;
+      item.append(strong, span);
+      return item;
+    }
+
+    function paragraph(text) {
+      const p = document.createElement("p");
+      p.textContent = text;
+      return p;
+    }
+
+    function relationCard(kicker, title, body, color) {
+      const item = document.createElement("div");
+      item.className = "relation";
+      item.style.borderLeftColor = color || "#94a3b8";
+      const strong = document.createElement("strong");
+      strong.textContent = `${kicker}：${title}`;
+      const span = document.createElement("span");
+      span.textContent = body;
+      item.append(strong, span);
+      return item;
+    }
+
+    function createLegend() {
+      const legend = document.createElement("div");
+      legend.className = "legend";
+      MODE_META[state.mode].columns.forEach((column) => {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        const swatch = document.createElement("span");
+        swatch.className = "swatch";
+        swatch.style.background = column.color;
+        const label = document.createElement("span");
+        label.textContent = column.key;
+        item.append(swatch, label);
+        legend.append(item);
+      });
+      if (state.mode === "combined") {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        const swatch = document.createElement("span");
+        swatch.className = "swatch";
+        swatch.style.background = "#64748b";
+        const label = document.createElement("span");
+        label.textContent = "虚线为物理反向推动数学";
+        item.append(swatch, label);
+        legend.append(item);
+      }
+      return legend;
+    }
+
+    function createSvg(name, attrs = {}) {
+      const element = document.createElementNS("http://www.w3.org/2000/svg", name);
+      Object.entries(attrs).forEach(([key, value]) => {
+        element.setAttribute(key, value);
+      });
+      return element;
+    }
+
+    function getSvgPoint(event) {
+      const rect = svg.getBoundingClientRect();
+      return {
+        x: (event.clientX - rect.left) * (VIEWBOX.width / rect.width),
+        y: (event.clientY - rect.top) * (VIEWBOX.height / rect.height)
+      };
+    }
+
+    function screenToGraph(event) {
+      const point = getSvgPoint(event);
+      return {
+        x: (point.x - state.pan.x) / state.zoom,
+        y: (point.y - state.pan.y) / state.zoom
+      };
+    }
+
+    function startNodeDrag(event, id) {
+      event.stopPropagation();
+      const start = screenToGraph(event);
+      const startScreen = { x: event.clientX, y: event.clientY };
+      const positions = computePositions();
+      const origin = positions[id];
+      if (!origin) return;
+      svg.setPointerCapture(event.pointerId);
+      let moved = false;
+      const move = (moveEvent) => {
+        const current = screenToGraph(moveEvent);
+        const distance = Math.hypot(moveEvent.clientX - startScreen.x, moveEvent.clientY - startScreen.y);
+        if (!moved && distance <= 4) return;
+        if (!moved) {
+          moved = true;
+          state.suppressClick = true;
+          clearHoverState();
+        }
+        if (!state.customPositions[state.mode]) state.customPositions[state.mode] = {};
+        state.customPositions[state.mode][id] = {
+          x: clamp(origin.x + current.x - start.x, 90, 1310),
+          y: clamp(origin.y + current.y - start.y, 70, 790)
+        };
+        render();
+      };
+      const stop = (upEvent) => {
+        svg.releasePointerCapture(upEvent.pointerId);
+        svg.removeEventListener("pointermove", move);
+        svg.removeEventListener("pointerup", stop);
+        svg.removeEventListener("pointercancel", stop);
+        if (moved) window.setTimeout(() => {
+          state.suppressClick = false;
+        }, 80);
+      };
+      svg.addEventListener("pointermove", move);
+      svg.addEventListener("pointerup", stop);
+      svg.addEventListener("pointercancel", stop);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function zoomBy(factor) {
+      state.zoom = clamp(state.zoom * factor, 0.62, 2.2);
+      render();
+    }
+
+    let panSession = null;
+    svg.addEventListener("pointerdown", (event) => {
+      if (event.target.closest && event.target.closest(".node, .edge")) return;
+      panSession = {
+        x: event.clientX,
+        y: event.clientY,
+        pan: { ...state.pan }
+      };
+      svg.setPointerCapture(event.pointerId);
+      clearInteractionState();
+      render();
+    });
+
+    svg.addEventListener("pointermove", (event) => {
+      if (!panSession) {
+        syncHoverFromPointer(event);
+        return;
+      }
+      const rect = svg.getBoundingClientRect();
+      const dx = (event.clientX - panSession.x) * (VIEWBOX.width / rect.width);
+      const dy = (event.clientY - panSession.y) * (VIEWBOX.height / rect.height);
+      state.pan = {
+        x: panSession.pan.x + dx,
+        y: panSession.pan.y + dy
+      };
+      render();
+    });
+
+    svg.addEventListener("pointerup", (event) => {
+      if (panSession) {
+        panSession = null;
+        svg.releasePointerCapture(event.pointerId);
+      }
+    });
+
+    svg.addEventListener("pointerleave", () => {
+      if (hasSelection() || (!state.hoveredNode && !state.hoveredEdge)) return;
+      clearHoverState();
+      render();
+    });
+
+    svg.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      const point = getSvgPoint(event);
+      const graphPoint = {
+        x: (point.x - state.pan.x) / state.zoom,
+        y: (point.y - state.pan.y) / state.zoom
+      };
+      const factor = event.deltaY > 0 ? 0.92 : 1.08;
+      state.zoom = clamp(state.zoom * factor, 0.62, 2.2);
+      state.pan = {
+        x: point.x - graphPoint.x * state.zoom,
+        y: point.y - graphPoint.y * state.zoom
+      };
+      render();
+    }, { passive: false });
+
+    searchInput.addEventListener("input", () => {
+      state.query = searchInput.value.trim().toLowerCase();
+      render();
+    });
+
+    densityInput.addEventListener("input", () => {
+      state.density = Number(densityInput.value);
+      render();
+    });
+
+    focusToggle.addEventListener("change", () => {
+      state.focus = focusToggle.checked;
+      render();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if (hasSelection() || state.hoveredNode || state.hoveredEdge) {
+        clearInteractionState();
+        render();
+        return;
+      }
+      if (state.query) {
+        state.query = "";
+        searchInput.value = "";
+        render();
+      }
+    });
+
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => setMode(tab.dataset.mode));
+    });
+
+    document.getElementById("zoomOutButton").addEventListener("click", () => zoomBy(0.86));
+    document.getElementById("zoomInButton").addEventListener("click", () => zoomBy(1.16));
+    document.getElementById("resetButton").addEventListener("click", resetView);
+
+    setMode("combined");
+
+    function syncHoverFromPointer(event) {
+      if (hasSelection()) {
+        if (state.hoveredNode || state.hoveredEdge) {
+          clearHoverState();
+          render();
+        }
+        return;
+      }
+      const nodeElement = event.target.closest ? event.target.closest(".node") : null;
+      const edgeElement = nodeElement ? null : event.target.closest ? event.target.closest(".edge") : null;
+      const nextNode = nodeElement ? nodeElement.getAttribute("data-node-id") : null;
+      const nextEdge = edgeElement ? edgeElement.getAttribute("data-edge-id") : null;
+      if (nextNode === state.hoveredNode && nextEdge === state.hoveredEdge) return;
+      state.hoveredNode = nextNode;
+      state.hoveredEdge = nextEdge;
+      render();
+    }
+  </script>
+</body>
+</html>
